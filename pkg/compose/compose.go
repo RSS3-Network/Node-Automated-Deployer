@@ -2,8 +2,9 @@ package compose
 
 import (
 	"fmt"
-	"github.com/rss3-network/node/config"
 	"strings"
+
+	"github.com/rss3-network/node/config"
 )
 
 type Compose struct {
@@ -65,6 +66,7 @@ func SetNodeVersion(version string) Option {
 				}
 			}
 		}
+
 		c.Services = services
 	}
 }
@@ -72,6 +74,7 @@ func SetNodeVersion(version string) Option {
 func WithWorkers(workers []*config.Module) Option {
 	return func(c *Compose) {
 		services := c.Services
+
 		for _, worker := range workers {
 			name := fmt.Sprintf("node-%s", worker.ID)
 			services[name] = Service{
@@ -80,6 +83,7 @@ func WithWorkers(workers []*config.Module) Option {
 				Command:       fmt.Sprintf("--module=worker --worker.id=%s", worker.ID),
 			}
 		}
+
 		c.Services = services
 	}
 }

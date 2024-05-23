@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/rss3-network/node-compose/pkg/cmd"
 	"os"
+
+	"github.com/rss3-network/node-compose/pkg/cmd"
 )
 
 func main() {

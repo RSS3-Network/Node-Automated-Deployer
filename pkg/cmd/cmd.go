@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/rss3-network/node-compose/pkg/compose"
 	"github.com/rss3-network/node/config"
 	"github.com/spf13/cobra"
@@ -19,7 +20,7 @@ var rootCmd = cobra.Command{
 	Long: `Compose is a tool for defining and running multi-container Docker applications.
 With Compose, you use a YAML file to configure your application's services.
 Then, with a single command, you create and start all the services from your configuration.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		// read config file
 
 		cfg, err := config.Setup(file)

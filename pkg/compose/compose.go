@@ -71,6 +71,25 @@ func SetNodeVersion(version string) Option {
 	}
 }
 
+func SetNodeVolume() Option {
+	return func(c *Compose) {
+		services := c.Services
+		for k, v := range services {
+			if strings.Contains(v.Image, "rss3/node") {
+				services[k] = Service{
+					ContainerName: v.ContainerName,
+					Image:         v.Image,
+					Environment:   v.Environment,
+					Volumes:       []string{"./config:/etc/rss3"},
+					Command:       v.Command,
+				}
+			}
+		}
+
+		c.Services = services
+	}
+}
+
 func WithWorkers(workers []*config.Module) Option {
 	return func(c *Compose) {
 		services := c.Services

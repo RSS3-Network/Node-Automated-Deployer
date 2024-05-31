@@ -13,13 +13,13 @@ type Compose struct {
 }
 
 type Service struct {
+	Command       string            `yaml:"command,omitempty"`
 	ContainerName string            `yaml:"container_name,omitempty"`
+	Environment   map[string]string `yaml:"environment,omitempty"`
 	Image         string            `yaml:"image"`
 	Ports         []string          `yaml:"ports,omitempty"`
-	Environment   map[string]string `yaml:"environment,omitempty"`
-	Volumes       []string          `yaml:"volumes,omitempty"`
-	Command       string            `yaml:"command,omitempty"`
 	Restart       string            `yaml:"restart,omitempty"`
+	Volumes       []string          `yaml:"volumes,omitempty"`
 }
 
 type Option func(*Compose)

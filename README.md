@@ -7,11 +7,7 @@ For more information, please refer to the [RSS3 Node Deployment Guide](https://d
 ## Automated Deployment
 
 ```bash
-curl -s https://raw.githubusercontent.com/RSS3-Network/Node-Automated-Deployer/main/automated_deploy.sh | bash
-```
-
-```bash
-chmod -x automated_deploy.sh
+curl -s https://raw.githubusercontent.com/RSS3-Network/Node-Automated-Deployer/main/automated_deploy.sh | sudo bash
 ```
 
 And you are done!

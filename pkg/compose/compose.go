@@ -88,7 +88,7 @@ func SetNodeVolume() Option {
 					ContainerName: v.ContainerName,
 					Image:         v.Image,
 					Environment:   v.Environment,
-					Volumes:       []string{"./config:/etc/rss3"},
+					Volumes:       []string{"${PWD}/config:/etc/rss3/node"},
 					Command:       v.Command,
 				}
 			}
@@ -106,7 +106,7 @@ func SetRestartPolicy() Option {
 				ContainerName: v.ContainerName,
 				Image:         v.Image,
 				Environment:   v.Environment,
-				Volumes:       []string{"${PWD}/config:/etc/rss3/node"},
+				Volumes:       v.Volumes,
 				Command:       v.Command,
 				Restart:       "unless-stopped",
 			}

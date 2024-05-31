@@ -28,8 +28,6 @@ Then, with a single command, you create and start all the services from your con
 			return err
 		}
 
-		fmt.Printf("config: %+v\n", cfg.Type)
-
 		version, err := compose.NodeVersion()
 		if err != nil {
 			return err
@@ -49,7 +47,6 @@ Then, with a single command, you create and start all the services from your con
 			return err
 		}
 
-		fmt.Println("Compose file:")
 		fmt.Println(b.String())
 
 		return nil
@@ -61,5 +58,5 @@ func Execute() error {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&file, "file", "f", file, "Specify dsl node config file (default is config.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&file, "file", "f", file, "Specify the config.yaml file (default: config.yaml)")
 }

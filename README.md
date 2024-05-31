@@ -7,7 +7,7 @@ For more information, please refer to the [RSS3 Node Deployment Guide](https://d
 ## Automated Deployment
 
 ```bash
-curl -s https://raw.githubusercontent.com/RSS3-Network/Node-Automated-Deployer/main/node-automated-deployer/automated_deploy.sh | bash
+curl -s https://raw.githubusercontent.com/RSS3-Network/Node-Automated-Deployer/main/automated_deploy.sh | bash
 ```
 
 ```bash

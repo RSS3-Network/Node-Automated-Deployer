@@ -1,4 +1,4 @@
-module github.com/rss3-network/node-compose
+module github.com/rss3-network/node-automated-deployer
 
 go 1.22.3
 

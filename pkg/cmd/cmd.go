@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/rss3-network/node-compose/pkg/compose"
+	"github.com/rss3-network/node-automated-deployer/pkg/compose"
 	"github.com/rss3-network/node/config"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"

@@ -18,7 +18,7 @@ before:
 builds:
   - env:
       - CGO_ENABLED=0
-    binary: node-compose
+    binary: node-automated-deployer
     goos:
       - linux
       - windows

@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/rss3-network/node-compose/pkg/cmd"
+	"github.com/rss3-network/node-automated-deployer/pkg/cmd"
 )
 
 func main() {

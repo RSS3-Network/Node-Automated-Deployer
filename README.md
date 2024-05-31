@@ -1,16 +1,16 @@
-# Node Compose
+# Node Automated Deployer
 
-a tool to generate dsl node with `docker-compose.yaml`
+This Deployer automatically deploys an RSS3 DSL Node based on a `config.yaml` file.
 
 
 ## Usage
 
 ### Download
 
-download the latest release from [release page](https://github.com/RSS3-Network/Node-Compose/releases)
+download the latest release from [release page](https://github.com/RSS3-Network/Node-Automated-Deployer/releases)
 
 ```bash
-tar -zxvf node-compose-v0.1.0-linux-amd64.tar.gz
+tar -zxvf node-automated-deployer-v0.1.0-linux-amd64.tar.gz
 ``` 
 
 ### Configuration
@@ -20,6 +20,6 @@ create a `config.yaml` file in the subdirectory `config` of the executable file.
 ### Generate
 
 ```bash
-./node-compose > docker-compose.yaml
+./node-automated-deployer > docker-compose.yaml
 ```
 

@@ -44,7 +44,8 @@ func NewCompose(options ...Option) *Compose {
 			},
 			fmt.Sprintf("%s_core", prefix): {
 				ContainerName: fmt.Sprintf("%s_core", prefix),
-				Image:         "rss3/node:latest",
+				Image:         "rss3/node",
+				Command:       "--module=core",
 			},
 		},
 		Volumes: map[string]*string{

@@ -24,22 +24,26 @@ type Service struct {
 type Option func(*Compose)
 
 func NewCompose(options ...Option) *Compose {
+	// use a prefix to avoid conflict with other containers
+	prefix := "rss3_node"
+	cockroachdbVolume := "cockroachdb"
+
 	compose := &Compose{
 		Version: "3.8",
 		Services: map[string]Service{
-			"redis": {
-				ContainerName: "redis",
+			fmt.Sprintf("%s_redis", prefix): {
+				ContainerName: fmt.Sprintf("%s_redis", prefix),
 				Image:         "redis:7-alpine",
 			},
-			"cockroachdb": {
-				ContainerName: "cockroachdb",
+			fmt.Sprintf("%s_cockroachdb", prefix): {
+				ContainerName: fmt.Sprintf("%s_cockroachdb", prefix),
 				Image:         "cockroachdb/cockroach:v23.2.5",
 				Ports:         []string{"26257:26257", "8080:8080"},
 				Volumes:       []string{fmt.Sprintf("%s:/cockroach/cockroach-data", cockroachdbVolume)},
 				Command:       "start-single-node --cluster-name=node --insecure",
 			},
-			"core": {
-				ContainerName: "core",
+			fmt.Sprintf("%s_core", prefix): {
+				ContainerName: fmt.Sprintf("%s_core", prefix),
 				Image:         "rss3/node:latest",
 			},
 		},

@@ -47,7 +47,9 @@ Then, with a single command, you create and start all the services from your con
 			return err
 		}
 
-		fmt.Println(b.String())
+		// Remove null values in the yaml output
+		output := strings.ReplaceAll(b.String(), " null", "")
+		fmt.Println(output)
 
 		return nil
 	},

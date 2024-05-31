@@ -9,6 +9,7 @@ import (
 
 type Compose struct {
 	Services map[string]Service
+	Volumes  map[string]*string
 }
 
 type Service struct {
@@ -34,13 +35,16 @@ func NewCompose(options ...Option) *Compose {
 				ContainerName: "cockroachdb",
 				Image:         "cockroachdb/cockroach:v23.2.5",
 				Ports:         []string{"26257:26257", "8080:8080"},
-				Volumes:       []string{"cockroachdb:/cockroach/cockroach-data"},
+				Volumes:       []string{fmt.Sprintf("%s:/cockroach/cockroach-data", cockroachdbVolume)},
 				Command:       "start-single-node --cluster-name=node --insecure",
 			},
 			"core": {
 				ContainerName: "core",
 				Image:         "rss3/node:latest",
 			},
+		},
+		Volumes: map[string]*string{
+			cockroachdbVolume: nil,
 		},
 	}
 

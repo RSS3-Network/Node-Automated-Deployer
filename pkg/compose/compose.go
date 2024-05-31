@@ -8,7 +8,6 @@ import (
 )
 
 type Compose struct {
-	Version  string
 	Services map[string]Service
 }
 

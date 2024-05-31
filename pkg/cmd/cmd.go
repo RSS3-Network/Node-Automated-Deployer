@@ -38,6 +38,7 @@ Then, with a single command, you create and start all the services from your con
 			compose.WithWorkers(cfg.Component.Decentralized),
 			compose.SetNodeVersion(version),
 			compose.SetNodeVolume(),
+			compose.SetRestartPolicy(),
 		)
 
 		var b bytes.Buffer

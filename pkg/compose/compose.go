@@ -19,6 +19,7 @@ type Service struct {
 	Environment   map[string]string `yaml:"environment,omitempty"`
 	Volumes       []string          `yaml:"volumes,omitempty"`
 	Command       string            `yaml:"command,omitempty"`
+	Restart       string            `yaml:"restart,omitempty"`
 }
 
 type Option func(*Compose)
@@ -29,7 +30,6 @@ func NewCompose(options ...Option) *Compose {
 	cockroachdbVolume := "cockroachdb"
 
 	compose := &Compose{
-		Version: "3.8",
 		Services: map[string]Service{
 			fmt.Sprintf("%s_redis", prefix): {
 				ContainerName: fmt.Sprintf("%s_redis", prefix),
@@ -90,6 +90,24 @@ func SetNodeVolume() Option {
 					Volumes:       []string{"./config:/etc/rss3"},
 					Command:       v.Command,
 				}
+			}
+		}
+
+		c.Services = services
+	}
+}
+
+func SetRestartPolicy() Option {
+	return func(c *Compose) {
+		services := c.Services
+		for k, v := range services {
+			services[k] = Service{
+				ContainerName: v.ContainerName,
+				Image:         v.Image,
+				Environment:   v.Environment,
+				Volumes:       []string{"${PWD}/config:/etc/rss3/node"},
+				Command:       v.Command,
+				Restart:       "unless-stopped",
 			}
 		}
 

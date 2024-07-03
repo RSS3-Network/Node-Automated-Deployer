@@ -16,9 +16,10 @@ type Service struct {
 	Command       string            `yaml:"command,omitempty"`
 	ContainerName string            `yaml:"container_name,omitempty"`
 	Environment   map[string]string `yaml:"environment,omitempty"`
+	Expose        []string          `yaml:"expose,omitempty"`
 	Image         string            `yaml:"image"`
-	Ports         []string          `yaml:"ports,omitempty"`
 	Restart       string            `yaml:"restart,omitempty"`
+	Ports         []string          `yaml:"ports,omitempty"`
 	Volumes       []string          `yaml:"volumes,omitempty"`
 }
 
@@ -33,19 +34,21 @@ func NewCompose(options ...Option) *Compose {
 		Services: map[string]Service{
 			fmt.Sprintf("%s_redis", prefix): {
 				ContainerName: fmt.Sprintf("%s_redis", prefix),
+				Expose:        []string{"6397"},
 				Image:         "redis:7-alpine",
 			},
 			fmt.Sprintf("%s_cockroachdb", prefix): {
-				ContainerName: fmt.Sprintf("%s_cockroachdb", prefix),
-				Image:         "cockroachdb/cockroach:v23.2.5",
-				Ports:         []string{"26257:26257", "8080:8080"},
-				Volumes:       []string{fmt.Sprintf("%s:/cockroach/cockroach-data", cockroachdbVolume)},
 				Command:       "start-single-node --cluster-name=node --insecure",
+				ContainerName: fmt.Sprintf("%s_cockroachdb", prefix),
+				Expose:        []string{"26257", "8080"},
+				Image:         "cockroachdb/cockroach:v23.2.5",
+				Volumes:       []string{fmt.Sprintf("%s:/cockroach/cockroach-data", cockroachdbVolume)},
 			},
 			fmt.Sprintf("%s_core", prefix): {
-				ContainerName: fmt.Sprintf("%s_core", prefix),
-				Image:         "rss3/node",
 				Command:       "--module=core",
+				ContainerName: fmt.Sprintf("%s_core", prefix),
+				Ports:         []string{"8080:80"},
+				Image:         "rss3/node",
 			},
 		},
 		Volumes: map[string]*string{
@@ -65,13 +68,8 @@ func SetNodeVersion(version string) Option {
 		services := c.Services
 		for k, v := range services {
 			if strings.Contains(v.Image, "rss3/node") {
-				services[k] = Service{
-					ContainerName: v.ContainerName,
-					Image:         fmt.Sprintf("rss3/node:%s", version),
-					Environment:   v.Environment,
-					Volumes:       v.Volumes,
-					Command:       v.Command,
-				}
+				v.Image = fmt.Sprintf("rss3/node:%s", version)
+				c.Services[k] = v
 			}
 		}
 
@@ -84,13 +82,8 @@ func SetNodeVolume() Option {
 		services := c.Services
 		for k, v := range services {
 			if strings.Contains(v.Image, "rss3/node") {
-				services[k] = Service{
-					ContainerName: v.ContainerName,
-					Image:         v.Image,
-					Environment:   v.Environment,
-					Volumes:       []string{"${PWD}/config:/etc/rss3/node"},
-					Command:       v.Command,
-				}
+				v.Volumes = append(v.Volumes, "${PWD}/config:/etc/rss3/node")
+				c.Services[k] = v
 			}
 		}
 
@@ -102,14 +95,8 @@ func SetRestartPolicy() Option {
 	return func(c *Compose) {
 		services := c.Services
 		for k, v := range services {
-			services[k] = Service{
-				ContainerName: v.ContainerName,
-				Image:         v.Image,
-				Environment:   v.Environment,
-				Volumes:       v.Volumes,
-				Command:       v.Command,
-				Restart:       "unless-stopped",
-			}
+			v.Restart = "unless-stopped"
+			c.Services[k] = v
 		}
 
 		c.Services = services
@@ -123,9 +110,9 @@ func WithWorkers(workers []*config.Module) Option {
 		for _, worker := range workers {
 			name := fmt.Sprintf("node-%s", worker.ID)
 			services[name] = Service{
+				Command:       fmt.Sprintf("--module=worker --worker.id=%s", worker.ID),
 				ContainerName: name,
 				Image:         "rss3/node",
-				Command:       fmt.Sprintf("--module=worker --worker.id=%s", worker.ID),
 			}
 		}
 

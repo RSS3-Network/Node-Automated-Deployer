@@ -50,6 +50,16 @@ func NewCompose(options ...Option) *Compose {
 				Ports:         []string{"8080:80"},
 				Image:         "rss3/node",
 			},
+			fmt.Sprintf("%s_monitor", prefix): {
+				Command:       "--module=monitor",
+				ContainerName: fmt.Sprintf("%s_monitor", prefix),
+				Image:         "rss3/node",
+			},
+			fmt.Sprintf("%s_broadcaster", prefix): {
+				Command:       "--module=broadcaster",
+				ContainerName: fmt.Sprintf("%s_broadcaster", prefix),
+				Image:         "rss3/node",
+			},
 		},
 		Volumes: map[string]*string{
 			cockroachdbVolume: nil,

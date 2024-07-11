@@ -34,7 +34,7 @@ func NewCompose(options ...Option) *Compose {
 		Services: map[string]Service{
 			fmt.Sprintf("%s_redis", prefix): {
 				ContainerName: fmt.Sprintf("%s_redis", prefix),
-				Expose:        []string{"6397"},
+				Expose:        []string{"6379"},
 				Image:         "redis:7-alpine",
 			},
 			fmt.Sprintf("%s_cockroachdb", prefix): {

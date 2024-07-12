@@ -51,6 +51,12 @@ func NewCompose(options ...Option) *Compose {
 				ContainerName: fmt.Sprintf("%s_redis", dockerComposeContainerNamePrefix),
 				Expose:        []string{"6397"},
 				Image:         "redis:7-alpine",
+				Healthcheck: Healthcheck{
+					Test:     []string{"CMD", "redis-cli", "ping"},
+					Interval: 5 * time.Second,
+					Timeout:  10 * time.Second,
+					Retries:  3,
+				},
 			},
 			fmt.Sprintf("%s_cockroachdb", dockerComposeContainerNamePrefix): {
 				Command:       "start-single-node --cluster-name=node --insecure",
@@ -151,6 +157,9 @@ func SetDependsOnCRDB() Option {
 			if strings.Contains(v.Image, "rss3/node") {
 				v.DependsOn = map[string]DependsOn{
 					fmt.Sprintf("%s_cockroachdb", dockerComposeContainerNamePrefix): {
+						Condition: "service_healthy",
+					},
+					fmt.Sprintf("%s_redis", dockerComposeContainerNamePrefix): {
 						Condition: "service_healthy",
 					},
 				}

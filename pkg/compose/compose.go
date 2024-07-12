@@ -3,6 +3,7 @@ package compose
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/rss3-network/node/config"
 )
@@ -10,6 +11,13 @@ import (
 type Compose struct {
 	Services map[string]Service
 	Volumes  map[string]*string
+}
+
+type Healthcheck struct {
+	Test     []string      `yaml:"test,omitempty"`
+	Interval time.Duration `yaml:"interval,omitempty"`
+	Timeout  time.Duration `yaml:"timeout,omitempty"`
+	Retries  int           `yaml:"retries,omitempty"`
 }
 
 type Service struct {
@@ -21,6 +29,7 @@ type Service struct {
 	Restart       string            `yaml:"restart,omitempty"`
 	Ports         []string          `yaml:"ports,omitempty"`
 	Volumes       []string          `yaml:"volumes,omitempty"`
+	Healthcheck   Healthcheck       `yaml:"healthcheck,omitempty"`
 }
 
 type Option func(*Compose)
@@ -43,6 +52,14 @@ func NewCompose(options ...Option) *Compose {
 				Expose:        []string{"26257", "8080"},
 				Image:         "cockroachdb/cockroach:v23.2.5",
 				Volumes:       []string{fmt.Sprintf("%s:/cockroach/cockroach-data", cockroachdbVolume)},
+				// we use similar healthcheck as the official cockroachdb operator
+				// ref: https://github.com/cockroachdb/cockroach-operator/blob/28d139cb0c19d3c7984b2b2da1b25c5ba388d814/pkg/resource/testdata/TestStatefulSetBuilder/default_secure.golden#L76-L83
+				Healthcheck: Healthcheck{
+					Test:     []string{"CMD", "curl", "-f", "http://localhost:8080/health?ready=1"},
+					Interval: 5 * time.Second,
+					Timeout:  1 * time.Second,
+					Retries:  3,
+				},
 			},
 			fmt.Sprintf("%s_core", prefix): {
 				Command:       "--module=core",
@@ -117,5 +134,12 @@ func WithWorkers(workers []*config.Module) Option {
 		}
 
 		c.Services = services
+	}
+}
+
+// SetDependsOnCRDB would set all the rss3 node service to depend on the cockroachdb service
+func SetDependsOnCRDB() Option {
+	return func(c *Compose) {
+
 	}
 }

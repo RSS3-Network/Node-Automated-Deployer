@@ -20,35 +20,41 @@ type Healthcheck struct {
 	Retries  int           `yaml:"retries,omitempty"`
 }
 
+type DependsOn struct {
+	Condition string `yaml:"condition,omitempty"`
+}
+
 type Service struct {
-	Command       string            `yaml:"command,omitempty"`
-	ContainerName string            `yaml:"container_name,omitempty"`
-	Environment   map[string]string `yaml:"environment,omitempty"`
-	Expose        []string          `yaml:"expose,omitempty"`
-	Image         string            `yaml:"image"`
-	Restart       string            `yaml:"restart,omitempty"`
-	Ports         []string          `yaml:"ports,omitempty"`
-	Volumes       []string          `yaml:"volumes,omitempty"`
-	Healthcheck   Healthcheck       `yaml:"healthcheck,omitempty"`
+	Command       string               `yaml:"command,omitempty"`
+	ContainerName string               `yaml:"container_name,omitempty"`
+	Environment   map[string]string    `yaml:"environment,omitempty"`
+	Expose        []string             `yaml:"expose,omitempty"`
+	Image         string               `yaml:"image"`
+	Restart       string               `yaml:"restart,omitempty"`
+	Ports         []string             `yaml:"ports,omitempty"`
+	Volumes       []string             `yaml:"volumes,omitempty"`
+	Healthcheck   Healthcheck          `yaml:"healthcheck,omitempty"`
+	DependsOn     map[string]DependsOn `yaml:"depends_on,omitempty"`
 }
 
 type Option func(*Compose)
 
+// use a prefix to avoid conflict with other containers
+const dockerComposeContainerNamePrefix = "rss3_node"
+
 func NewCompose(options ...Option) *Compose {
-	// use a prefix to avoid conflict with other containers
-	prefix := "rss3_node"
 	cockroachdbVolume := "cockroachdb"
 
 	compose := &Compose{
 		Services: map[string]Service{
-			fmt.Sprintf("%s_redis", prefix): {
-				ContainerName: fmt.Sprintf("%s_redis", prefix),
+			fmt.Sprintf("%s_redis", dockerComposeContainerNamePrefix): {
+				ContainerName: fmt.Sprintf("%s_redis", dockerComposeContainerNamePrefix),
 				Expose:        []string{"6397"},
 				Image:         "redis:7-alpine",
 			},
-			fmt.Sprintf("%s_cockroachdb", prefix): {
+			fmt.Sprintf("%s_cockroachdb", dockerComposeContainerNamePrefix): {
 				Command:       "start-single-node --cluster-name=node --insecure",
-				ContainerName: fmt.Sprintf("%s_cockroachdb", prefix),
+				ContainerName: fmt.Sprintf("%s_cockroachdb", dockerComposeContainerNamePrefix),
 				Expose:        []string{"26257", "8080"},
 				Image:         "cockroachdb/cockroach:v23.2.5",
 				Volumes:       []string{fmt.Sprintf("%s:/cockroach/cockroach-data", cockroachdbVolume)},
@@ -61,9 +67,9 @@ func NewCompose(options ...Option) *Compose {
 					Retries:  3,
 				},
 			},
-			fmt.Sprintf("%s_core", prefix): {
+			fmt.Sprintf("%s_core", dockerComposeContainerNamePrefix): {
 				Command:       "--module=core",
-				ContainerName: fmt.Sprintf("%s_core", prefix),
+				ContainerName: fmt.Sprintf("%s_core", dockerComposeContainerNamePrefix),
 				Ports:         []string{"8080:80"},
 				Image:         "rss3/node",
 			},
@@ -140,6 +146,16 @@ func WithWorkers(workers []*config.Module) Option {
 // SetDependsOnCRDB would set all the rss3 node service to depend on the cockroachdb service
 func SetDependsOnCRDB() Option {
 	return func(c *Compose) {
-
+		services := c.Services
+		for k, v := range services {
+			if strings.Contains(v.Image, "rss3/node") {
+				v.DependsOn = map[string]DependsOn{
+					fmt.Sprintf("%s_cockroachdb", dockerComposeContainerNamePrefix): {
+						Condition: "service_healthy",
+					},
+				}
+				c.Services[k] = v
+			}
+		}
 	}
 }

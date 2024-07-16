@@ -36,6 +36,7 @@ Then, with a single command, you create and start all the services from your con
 
 		composeFile := compose.NewCompose(
 			compose.WithWorkers(cfg.Component.Decentralized),
+			compose.SetDependsOnCRDB(),
 			compose.SetNodeVersion(version),
 			compose.SetNodeVolume(),
 			compose.SetRestartPolicy(),

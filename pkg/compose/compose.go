@@ -49,7 +49,7 @@ func NewCompose(options ...Option) *Compose {
 		Services: map[string]Service{
 			fmt.Sprintf("%s_redis", dockerComposeContainerNamePrefix): {
 				ContainerName: fmt.Sprintf("%s_redis", dockerComposeContainerNamePrefix),
-				Expose:        []string{"6397"},
+				Expose:        []string{"6379"},
 				Image:         "redis:7-alpine",
 				Healthcheck: Healthcheck{
 					Test:     []string{"CMD", "redis-cli", "ping"},

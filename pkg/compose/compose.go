@@ -49,7 +49,7 @@ func NewCompose(options ...Option) *Compose {
 		Services: map[string]Service{
 			fmt.Sprintf("%s_redis", dockerComposeContainerNamePrefix): {
 				ContainerName: fmt.Sprintf("%s_redis", dockerComposeContainerNamePrefix),
-				Expose:        []string{"6379"},
+				Expose:        []string{"6397"},
 				Image:         "redis:7-alpine",
 				Healthcheck: Healthcheck{
 					Test:     []string{"CMD", "redis-cli", "ping"},
@@ -79,14 +79,14 @@ func NewCompose(options ...Option) *Compose {
 				Ports:         []string{"8080:80"},
 				Image:         "rss3/node",
 			},
-			fmt.Sprintf("%s_monitor", prefix): {
+			fmt.Sprintf("%s_monitor", dockerComposeContainerNamePrefix): {
 				Command:       "--module=monitor",
-				ContainerName: fmt.Sprintf("%s_monitor", prefix),
+				ContainerName: fmt.Sprintf("%s_monitor", dockerComposeContainerNamePrefix),
 				Image:         "rss3/node",
 			},
-			fmt.Sprintf("%s_broadcaster", prefix): {
+			fmt.Sprintf("%s_broadcaster", dockerComposeContainerNamePrefix): {
 				Command:       "--module=broadcaster",
-				ContainerName: fmt.Sprintf("%s_broadcaster", prefix),
+				ContainerName: fmt.Sprintf("%s_broadcaster", dockerComposeContainerNamePrefix),
 				Image:         "rss3/node",
 			},
 		},

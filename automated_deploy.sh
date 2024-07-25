@@ -43,30 +43,8 @@ check_docker_compose
 # Function to install curl if it's not already installed
 install_curl() {
     if ! command -v curl &> /dev/null; then
-        echo "curl is not installed. Installing curl..."
-        case $OS in
-            Linux)
-                if command -v apt-get &> /dev/null; then
-                    sudo apt-get update
-                    sudo apt-get install -y curl
-                elif command -v yum &> /dev/null; then
-                    sudo yum install -y curl
-                elif command -v pacman &> /dev/null; then
-                    sudo pacman -Syu curl
-                else
-                    echo "Unsupported package manager. Please install curl manually, or download the Deployer manually from $DEPLOYER_RELEASE_URL."
-                    exit 1
-                fi
-                ;;
-            MINGW*|MSYS*|CYGWIN*)
-                echo "Please install curl manually on Windows."
-                exit 1
-                ;;
-            *)
-                echo "Unsupported operating system: $OS"
-                exit 1
-                ;;
-        esac
+        echo "curl is not installed. Please install curl and rerun this script."
+        exit 1
     fi
 }
 

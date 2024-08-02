@@ -3,11 +3,15 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"path"
 	"strings"
+	"time"
 
 	"github.com/rss3-network/node-automated-deployer/pkg/compose"
 	"github.com/rss3-network/node/config"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/rand"
 	"gopkg.in/yaml.v3"
 )
 
@@ -34,6 +38,14 @@ Then, with a single command, you create and start all the services from your con
 			return err
 		}
 
+		if cfg.Discovery.Server.AccessToken == "" {
+			generatedAccessToken := "sk-" + randomString(32)
+			err = patchConfigFileWithAccessToken(file, generatedAccessToken)
+			if err != nil {
+				return err
+			}
+		}
+
 		composeFile := compose.NewCompose(
 			compose.WithWorkers(cfg.Component.Decentralized),
 			compose.SetDependsOnCRDB(),
@@ -56,6 +68,125 @@ Then, with a single command, you create and start all the services from your con
 
 		return nil
 	},
+}
+
+func randomString(n int) string {
+	rand.Seed(uint64(time.Now().UnixNano()))
+	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
+}
+
+func patchConfigFileWithAccessToken(file string, accessToken string) error {
+	discovered, err := discoverConfigFile(file)
+	if err != nil {
+		return fmt.Errorf("patch config file with generated access token, discover config file, %w", err)
+	}
+
+	f, err := os.Open(discovered)
+	if err != nil {
+		return fmt.Errorf("patch config file with generated access token, open config file, %w", err)
+	}
+
+	// we do not unmashal DSL node config.File directly because it does not have yaml struct tags and it does not play well with yaml encoder
+	// as a workaround, we unmarshal the file into yaml.Node then manually patch the access token
+	var root yaml.Node
+	if err = yaml.NewDecoder(f).Decode(&root); err != nil {
+		return fmt.Errorf("patch config file with generated access token, decode config file, %w", err)
+	}
+
+	if len(root.Content) > 0 {
+		discoveryNode, err := findYamlNode("discovery", root.Content[0])
+		if err != nil {
+			return fmt.Errorf("patch config file with generated access token, find discovery node, %w", err)
+		}
+		if discoveryNode == nil {
+			return fmt.Errorf("patch config file with generated access token, discovery node not found")
+		}
+		serverNode, err := findYamlNode("server", discoveryNode)
+		if err != nil {
+			return fmt.Errorf("patch config file with generated access token, find server node, %w", err)
+		}
+		if serverNode == nil {
+			return fmt.Errorf("patch config file with generated access token, server node not found")
+		}
+		accessTokenNode, err := findYamlNode("access_token", serverNode)
+		if err != nil {
+			return fmt.Errorf("patch config file with generated access token, find access_token node, %w", err)
+		}
+
+		if accessTokenNode == nil {
+			serverNode.Content = append(serverNode.Content, &yaml.Node{
+				Kind:  yaml.ScalarNode,
+				Tag:   "!!str",
+				Value: "access_token",
+			})
+			serverNode.Content = append(serverNode.Content, &yaml.Node{
+				Kind:  yaml.ScalarNode,
+				Tag:   "!!str",
+				Value: accessToken,
+			})
+		} else {
+			accessTokenNode.Kind = yaml.ScalarNode
+			accessTokenNode.Tag = "!!str"
+			accessTokenNode.Value = accessToken
+		}
+	}
+
+	// dump patched yaml node to file
+	if err = f.Close(); err != nil {
+		return fmt.Errorf("patch config file with generated access token, close config file, %w", err)
+	}
+
+	f, err = os.OpenFile(discovered, os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("patch config file with generated access token, open config file, %w", err)
+	}
+
+	err = yaml.NewEncoder(f).Encode(&root)
+	if err != nil {
+		return fmt.Errorf("patch config file with generated access token, encode config file, %w", err)
+	}
+	f.Close()
+
+	return nil
+}
+
+func discoverConfigFile(file string) (string, error) {
+	_, err := os.Stat(file)
+	if err == nil {
+		return file, nil
+	}
+
+	if os.IsNotExist(err) {
+		_, err = os.Stat(path.Join("config", file))
+		if err == nil {
+			return path.Join("config", file), nil
+		} else {
+			if os.IsNotExist(err) {
+				return "", fmt.Errorf("config file %s not found", file)
+			}
+			return "", err
+		}
+	} else {
+		return "", err
+	}
+}
+
+func findYamlNode(fieldName string, parent *yaml.Node) (*yaml.Node, error) {
+	if parent == nil {
+		return nil, fmt.Errorf("find yaml node with field %s, parent node is nil", fieldName)
+	}
+	for i, node := range parent.Content {
+		if node.Value == fieldName {
+			return parent.Content[i+1], nil
+		}
+	}
+
+	return nil, nil
 }
 
 func Execute() error {

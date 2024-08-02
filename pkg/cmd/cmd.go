@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
 	"path"
 	"strings"
@@ -11,7 +12,6 @@ import (
 	"github.com/rss3-network/node-automated-deployer/pkg/compose"
 	"github.com/rss3-network/node/config"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/rand"
 	"gopkg.in/yaml.v3"
 )
 
@@ -71,11 +71,11 @@ Then, with a single command, you create and start all the services from your con
 }
 
 func randomString(n int) string {
-	rand.Seed(uint64(time.Now().UnixNano()))
-	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+		b[i] = letterBytes[r.Intn(len(letterBytes))]
 	}
 	return string(b)
 }

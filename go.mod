@@ -5,7 +5,6 @@ go 1.22.3
 require (
 	github.com/rss3-network/node v0.5.9
 	github.com/spf13/cobra v1.8.1
-	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -67,6 +66,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.25.0 // indirect
+	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8 // indirect
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect

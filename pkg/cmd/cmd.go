@@ -2,12 +2,11 @@ package cmd
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
 	"os"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/rss3-network/node-automated-deployer/pkg/compose"
 	"github.com/rss3-network/node/config"
@@ -71,12 +70,17 @@ Then, with a single command, you create and start all the services from your con
 }
 
 func randomString(n int) string {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+
 	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[r.Intn(len(letterBytes))]
+	if _, err := rand.Read(b); err != nil {
+		panic(err)
 	}
+
+	for i := range b {
+		b[i] = letterBytes[int(b[i])%len(letterBytes)]
+	}
+
 	return string(b)
 }
 
@@ -103,16 +107,20 @@ func patchConfigFileWithAccessToken(file string, accessToken string) error {
 		if err != nil {
 			return fmt.Errorf("patch config file with generated access token, find discovery node, %w", err)
 		}
+
 		if discoveryNode == nil {
 			return fmt.Errorf("patch config file with generated access token, discovery node not found")
 		}
+
 		serverNode, err := findYamlNode("server", discoveryNode)
 		if err != nil {
 			return fmt.Errorf("patch config file with generated access token, find server node, %w", err)
 		}
+
 		if serverNode == nil {
 			return fmt.Errorf("patch config file with generated access token, server node not found")
 		}
+
 		accessTokenNode, err := findYamlNode("access_token", serverNode)
 		if err != nil {
 			return fmt.Errorf("patch config file with generated access token, find access_token node, %w", err)
@@ -150,6 +158,7 @@ func patchConfigFileWithAccessToken(file string, accessToken string) error {
 	if err != nil {
 		return fmt.Errorf("patch config file with generated access token, encode config file, %w", err)
 	}
+
 	f.Close()
 
 	return nil
@@ -165,21 +174,23 @@ func discoverConfigFile(file string) (string, error) {
 		_, err = os.Stat(path.Join("config", file))
 		if err == nil {
 			return path.Join("config", file), nil
-		} else {
-			if os.IsNotExist(err) {
-				return "", fmt.Errorf("config file %s not found", file)
-			}
-			return "", err
 		}
-	} else {
+
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("config file %s not found", file)
+		}
+
 		return "", err
 	}
+
+	return "", err
 }
 
 func findYamlNode(fieldName string, parent *yaml.Node) (*yaml.Node, error) {
 	if parent == nil {
 		return nil, fmt.Errorf("find yaml node with field %s, parent node is nil", fieldName)
 	}
+
 	for i, node := range parent.Content {
 		if node.Value == fieldName {
 			return parent.Content[i+1], nil

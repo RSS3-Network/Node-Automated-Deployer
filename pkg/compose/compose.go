@@ -43,7 +43,7 @@ type Option func(*Compose)
 const dockerComposeContainerNamePrefix = "rss3_node"
 
 func NewCompose(options ...Option) *Compose {
-	cockroachdbVolume := "cockroachdb"
+	alloydbVolume := "alloydb"
 
 	compose := &Compose{
 		Services: map[string]Service{
@@ -58,19 +58,21 @@ func NewCompose(options ...Option) *Compose {
 					Retries:  3,
 				},
 			},
-			fmt.Sprintf("%s_cockroachdb", dockerComposeContainerNamePrefix): {
-				Command:       "start-single-node --cluster-name=node --insecure",
-				ContainerName: fmt.Sprintf("%s_cockroachdb", dockerComposeContainerNamePrefix),
-				Expose:        []string{"26257", "8080"},
-				Image:         "cockroachdb/cockroach:v23.2.5",
-				Volumes:       []string{fmt.Sprintf("%s:/cockroach/cockroach-data", cockroachdbVolume)},
-				// we use similar healthcheck as the official cockroachdb operator
-				// ref: https://github.com/cockroachdb/cockroach-operator/blob/28d139cb0c19d3c7984b2b2da1b25c5ba388d814/pkg/resource/testdata/TestStatefulSetBuilder/default_secure.golden#L76-L83
+			fmt.Sprintf("%s_alloydb", dockerComposeContainerNamePrefix): {
+				ContainerName: fmt.Sprintf("%s_alloydb", dockerComposeContainerNamePrefix),
+				Expose:        []string{"5432"},
+				Image:         "google/alloydbomni:latest",
+				Volumes:       []string{fmt.Sprintf("%s:/alloydb/alloydb-data", alloydbVolume)},
+				Environment: map[string]string{
+					"DATA_DIR":          "/var/lib/postgresql/data",
+					"HOST_PORT":         "5432",
+					"POSTGRES_PASSWORD": "password",
+				},
 				Healthcheck: Healthcheck{
-					Test:     []string{"CMD", "curl", "-f", "http://localhost:8080/health?ready=1"},
+					Test:     []string{"CMD-SHELL", "pg_isready -U postgres"},
 					Interval: 5 * time.Second,
-					Timeout:  1 * time.Second,
-					Retries:  3,
+					Timeout:  5 * time.Second,
+					Retries:  5,
 				},
 			},
 			fmt.Sprintf("%s_core", dockerComposeContainerNamePrefix): {
@@ -91,7 +93,7 @@ func NewCompose(options ...Option) *Compose {
 			},
 		},
 		Volumes: map[string]*string{
-			cockroachdbVolume: nil,
+			alloydbVolume: nil,
 		},
 	}
 
@@ -159,14 +161,14 @@ func WithWorkers(workers []*config.Module) Option {
 	}
 }
 
-// SetDependsOnCRDB would set all the rss3 node service to depend on the cockroachdb service
-func SetDependsOnCRDB() Option {
+// SetDependsOnAlloyDB would set all the rss3 node service to depend on the AlloyDB service
+func SetDependsOnAlloyDB() Option {
 	return func(c *Compose) {
 		services := c.Services
 		for k, v := range services {
 			if strings.Contains(v.Image, "rss3/node") {
 				v.DependsOn = map[string]DependsOn{
-					fmt.Sprintf("%s_cockroachdb", dockerComposeContainerNamePrefix): {
+					fmt.Sprintf("%s_alloydb", dockerComposeContainerNamePrefix): {
 						Condition: "service_healthy",
 					},
 					fmt.Sprintf("%s_redis", dockerComposeContainerNamePrefix): {

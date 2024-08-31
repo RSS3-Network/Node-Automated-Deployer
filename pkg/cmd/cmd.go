@@ -45,9 +45,11 @@ Then, with a single command, you create and start all the services from your con
 			}
 		}
 
+		patchFileSetDatabaseConnectionURI(file, "postgres://postgres:password@rss3_node_alloydb:5432/postgres")
+
 		composeFile := compose.NewCompose(
 			compose.WithWorkers(cfg.Component.Decentralized),
-			compose.SetDependsOnCRDB(),
+			compose.SetDependsOnAlloyDB(),
 			compose.SetNodeVersion(version),
 			compose.SetNodeVolume(),
 			compose.SetRestartPolicy(),
@@ -82,6 +84,69 @@ func randomString(n int) string {
 	}
 
 	return string(b)
+}
+
+func patchFileSetDatabaseConnectionURI(file string, newConnectionURI string) error {
+	discovered, err := discoverConfigFile(file)
+	if err != nil {
+		return fmt.Errorf("patch config file with new database connection uri, discover config file, %w", err)
+	}
+
+	f, err := os.Open(discovered)
+	if err != nil {
+		return fmt.Errorf("patch config file with new database connection uri, open config file, %w", err)
+	}
+
+	// we do not unmashal DSL node config.File directly because it does not have yaml struct tags and it does not play well with yaml encoder
+	// as a workaround, we unmarshal the file into yaml.Node then manually patch the access token
+	var root yaml.Node
+	if err = yaml.NewDecoder(f).Decode(&root); err != nil {
+		return fmt.Errorf("patch config file with new database connection uri, decode config file, %w", err)
+	}
+
+	if len(root.Content) > 0 {
+		databaseNode, err := findYamlNode("database", root.Content[0])
+		if err != nil {
+			return fmt.Errorf("patch config file with new database connection uri, find database node, %w", err)
+		}
+
+		if databaseNode == nil {
+			return fmt.Errorf("patch config file with new database connection uri, database node not found")
+		}
+
+		uriNode, err := findYamlNode("uri", databaseNode)
+		if err != nil {
+			return fmt.Errorf("patch config file with new database connection uri, find uri node, %w", err)
+		}
+
+		if uriNode == nil {
+			return fmt.Errorf("patch config file with new database connection uri, uri node not found")
+		}
+
+		uriNode.Kind = yaml.ScalarNode
+		uriNode.Tag = "!!str"
+		uriNode.Value = newConnectionURI
+
+	}
+
+	// dump patched yaml node to file
+	if err = f.Close(); err != nil {
+		return fmt.Errorf("patch config file with generated access token, close config file, %w", err)
+	}
+
+	f, err = os.OpenFile(discovered, os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("patch config file with generated access token, open config file, %w", err)
+	}
+
+	err = yaml.NewEncoder(f).Encode(&root)
+	if err != nil {
+		return fmt.Errorf("patch config file with generated access token, encode config file, %w", err)
+	}
+
+	f.Close()
+
+	return nil
 }
 
 func patchConfigFileWithAccessToken(file string, accessToken string) error {

@@ -45,7 +45,10 @@ Then, with a single command, you create and start all the services from your con
 			}
 		}
 
-		patchFileSetDatabaseConnectionURI(file, "postgres://postgres:password@rss3_node_alloydb:5432/postgres")
+		err = patchFileSetDatabaseConnectionURI(file, "postgres://postgres:password@rss3_node_alloydb:5432/postgres")
+		if err != nil {
+			return err
+		}
 
 		composeFile := compose.NewCompose(
 			compose.WithWorkers(cfg.Component.Decentralized),
@@ -126,9 +129,7 @@ func patchFileSetDatabaseConnectionURI(file string, newConnectionURI string) err
 		uriNode.Kind = yaml.ScalarNode
 		uriNode.Tag = "!!str"
 		uriNode.Value = newConnectionURI
-
 	}
-
 	// dump patched yaml node to file
 	if err = f.Close(); err != nil {
 		return fmt.Errorf("patch config file with generated access token, close config file, %w", err)

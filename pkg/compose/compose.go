@@ -64,7 +64,7 @@ func NewCompose(options ...Option) *Compose {
 				Image:         "google/alloydbomni:latest",
 				Volumes:       []string{fmt.Sprintf("%s:/alloydb/alloydb-data", alloydbVolume)},
 				Environment: map[string]string{
-					"DATA_DIR":          "/var/lib/postgresql/data",
+					"DATA_DIR":          "/alloydb/alloydb-data",
 					"HOST_PORT":         "5432",
 					"POSTGRES_PASSWORD": "password",
 				},

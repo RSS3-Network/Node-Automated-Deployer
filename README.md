@@ -51,11 +51,7 @@ component:
 +++     worker: core
 ```
 
-- `id`, from `rss-rsshub` to `rsshub-core`
-- `network`, from `rss` to `rsshub`
-- `worker`, from `rsshub` to `core`
-
-Other components remain the same.
+You should update your `config.yaml` file accordingly. Other components remain the same.
 
 ### Deploy
 

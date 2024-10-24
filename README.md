@@ -40,8 +40,8 @@ New major versions may contain incompatible breaking changes.
 
 When upgrading from v1.0.x or older to v1.1.x, the `rss` component has breaking changes:
 
-```yaml
-compoent:
+```diff
+component:
     rss:
 ---     id: rss-rsshub
 +++     id: rsshub-core

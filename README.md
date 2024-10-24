@@ -26,11 +26,19 @@ tar -zxvf downloaded_file.tar.gz
 
 Your `config.yaml` must be placed in the `config` subdirectory, at the same level as the `node-automated-deployer` script.
 
-### Upgrade
+### Upgrading
 
-If you are upgrading from an older version, please replace the `config.yaml` file with the new one (generated from [Explorer](https://explorer.rss3.io/)) or modify the configurations according to the [Deployment Guide](https://docs.rss3.io/guide/operator/deployment/guide#configuration-options).
+One can check what has changed in the [Changelog](https://github.com/RSS3-Network/Node/releases).
 
-#### Upgrading from v1.0.x or older to v1.1.x
+ℹ️ When upgrading, please ensure to update your `config.yaml` file or modify the configurations according to the [Deployment Guide](https://docs.rss3.io/guide/operator/deployment/guide#configuration-options).
+
+⚠️ Please read the release notes carefully before upgrading, especially for major version changes.
+
+New major versions may contain incompatible breaking changes.
+
+#### Upgrading from v1.0.x to v1.1.x
+
+When upgrading from v1.0.x or older to v1.1.x, the `rss` component has breaking changes:
 
 ```yaml
 component:
@@ -39,8 +47,6 @@ component:
         network: rsshub
         worker: core
 ```
-
-`rss` component has breaking changes:
 
 - `id`, from `rss-rsshub` to `rsshub-core`
 - `network`, from `rss` to `rsshub`

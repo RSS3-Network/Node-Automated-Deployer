@@ -148,49 +148,51 @@ fi
 # Get the directory of the script
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-# Check if config.yaml exists in the script's directory and run Deployer if it does
-if [ -f "$SCRIPT_DIR/config.yaml" ]; then
+# Check if config.yaml exists in the script's directory or in the config folder
+if [ -f "$SCRIPT_DIR/config/config.yaml" ]; then
+    echo "⚙️ config.yaml found in the config folder. use existing config file."
+elif [ -f "$SCRIPT_DIR/config.yaml" ]; then
     echo "⚙️ config.yaml found in the script's directory, moving it to config folder..."
-
     mkdir -p "$SCRIPT_DIR/config"
     mv "$SCRIPT_DIR/config.yaml" "$SCRIPT_DIR/config/config.yaml"
     echo "⚠️ DO NOT DELETE/MOVE THE config FOLDER OR ITS CONTENTS!"
+else
+    echo "⚠️ config.yaml not found, please create a config.yaml file or generate one at https://explorer.rss3.io."
+    exit 1
+fi
 
-    # Check for existing services
-    if $COMPOSE_CMD ps | grep -q "Up"; then
-        echo "🔄 Existing node services detected. This is an upgrade process."
-        echo "⏬ Stopping existing services..."
-        $COMPOSE_CMD down
-        if [ $? -ne 0 ]; then
-            echo "❌ Failed to stop existing services."
-            exit 1
-        fi
-        echo "✅ Existing services stopped successfully."
-    else
-        echo "🆕 No existing services detected. This is a new node deployment."
+# Check for existing services
+if $COMPOSE_CMD ps | grep -q "Up"; then
+    echo "🔄 Existing node services detected. This is an upgrade process."
+    echo "⏬ Stopping existing services..."
+    $COMPOSE_CMD down
+    if [ $? -ne 0 ]; then
+        echo "❌ Failed to stop existing services."
+        exit 1
     fi
+    echo "✅ Existing services stopped successfully."
+else
+    echo "🆕 No existing services detected. This is a new node deployment."
+fi
 
-    export NODE_VERSION
-    echo "🚀 Running the deployer..."
-    "$SCRIPT_DIR/node-automated-deployer" > "$SCRIPT_DIR/docker-compose.yaml"
+export NODE_VERSION
+echo "🚀 Running the deployer..."
+"$SCRIPT_DIR/node-automated-deployer" > "$SCRIPT_DIR/docker-compose.yaml"
 
-    # Check if docker-compose.yaml was successfully created
-    if [ -f "$SCRIPT_DIR/docker-compose.yaml" ]; then
-        echo "ℹ️ docker-compose.yaml created, starting Docker Compose..."
-        (cd "$SCRIPT_DIR" && $COMPOSE_CMD up -d)
+# Check if docker-compose.yaml was successfully created
+if [ -f "$SCRIPT_DIR/docker-compose.yaml" ]; then
+    echo "ℹ️ docker-compose.yaml created, starting Docker Compose..."
+    (cd "$SCRIPT_DIR" && $COMPOSE_CMD up -d)
 
-        # Check if Docker Compose started successfully
-        if [ $? -eq 0 ]; then
-            echo "✅ Deployment process completed successfully."
-            echo "🎉 Welcome to the RSS3 Network!"
-        else
-            echo "❌ Failed to start Docker Compose."
-            exit 1
-        fi
+    # Check if Docker Compose started successfully
+    if [ $? -eq 0 ]; then
+        echo "✅ Deployment process completed successfully."
+        echo "🎉 Welcome to the RSS3 Network!"
     else
-        echo "❌ Failed to create docker-compose.yaml."
+        echo "❌ Failed to start Docker Compose."
         exit 1
     fi
 else
-    echo "⚠️ config.yaml not found, please create a config.yaml file or generate one at https://explorer.rss3.io."
+    echo "❌ Failed to create docker-compose.yaml."
+    exit 1
 fi

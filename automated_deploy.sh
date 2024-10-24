@@ -156,6 +156,20 @@ if [ -f "$SCRIPT_DIR/config.yaml" ]; then
     mv "$SCRIPT_DIR/config.yaml" "$SCRIPT_DIR/config/config.yaml"
     echo "⚠️ DO NOT DELETE/MOVE THE config FOLDER OR ITS CONTENTS!"
 
+    # Check for existing services
+    if $COMPOSE_CMD ps | grep -q "Up"; then
+        echo "🔄 Existing node services detected. This is an upgrade process."
+        echo "⏬ Stopping existing services..."
+        $COMPOSE_CMD down
+        if [ $? -ne 0 ]; then
+            echo "❌ Failed to stop existing services."
+            exit 1
+        fi
+        echo "✅ Existing services stopped successfully."
+    else
+        echo "🆕 No existing services detected. This is a new node deployment."
+    fi
+
     export NODE_VERSION
     echo "🚀 Running the deployer..."
     "$SCRIPT_DIR/node-automated-deployer" > "$SCRIPT_DIR/docker-compose.yaml"

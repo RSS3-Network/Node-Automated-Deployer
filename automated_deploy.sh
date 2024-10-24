@@ -6,7 +6,7 @@ DEPLOYER_VERSION="v0.4.5"
 DEPLOYER_RELEASE_URL="https://github.com/RSS3-Network/$DEPLOYER_NAME/releases"
 
 # The version of RSS3 Node to deploy
-NODE_VERSION="v1.1.0"
+NODE_VERSION="v1.1.1"
 
 # Detect the operating system
 OS=$(uname -s)
@@ -155,6 +155,20 @@ if [ -f "$SCRIPT_DIR/config.yaml" ]; then
     mkdir -p "$SCRIPT_DIR/config"
     mv "$SCRIPT_DIR/config.yaml" "$SCRIPT_DIR/config/config.yaml"
     echo "⚠️ DO NOT DELETE/MOVE THE config FOLDER OR ITS CONTENTS!"
+
+    # Check for existing services
+    if $COMPOSE_CMD ps | grep -q "Up"; then
+        echo "🔄 Existing node services detected. This is an upgrade process."
+        echo "⏬ Stopping existing services..."
+        $COMPOSE_CMD down
+        if [ $? -ne 0 ]; then
+            echo "❌ Failed to stop existing services."
+            exit 1
+        fi
+        echo "✅ Existing services stopped successfully."
+    else
+        echo "🆕 No existing services detected. This is a new node deployment."
+    fi
 
     export NODE_VERSION
     echo "🚀 Running the deployer..."

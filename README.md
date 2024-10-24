@@ -20,7 +20,7 @@ Download the latest release from [release page](https://github.com/RSS3-Network/
 
 ```bash
 tar -zxvf downloaded_file.tar.gz
-``` 
+```
 
 ### Configuration
 
@@ -35,4 +35,3 @@ Your `config.yaml` must be placed in the `config` subdirectory, at the same leve
 ```bash
 docker-compose up -d
 ```
-

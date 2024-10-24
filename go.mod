@@ -3,7 +3,7 @@ module github.com/rss3-network/node-automated-deployer
 go 1.22.3
 
 require (
-	github.com/rss3-network/node v1.1.0
+	github.com/rss3-network/node v1.1.1
 	github.com/spf13/cobra v1.8.1
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -42,7 +42,7 @@ require (
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/pressly/goose/v3 v3.22.0 // indirect
-	github.com/rss3-network/protocol-go v0.5.12 // indirect
+	github.com/rss3-network/protocol-go v0.5.14 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/samber/lo v1.47.0 // indirect

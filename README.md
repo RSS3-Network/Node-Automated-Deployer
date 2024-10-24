@@ -20,11 +20,33 @@ Download the latest release from [release page](https://github.com/RSS3-Network/
 
 ```bash
 tar -zxvf downloaded_file.tar.gz
-``` 
+```
 
 ### Configuration
 
 Your `config.yaml` must be placed in the `config` subdirectory, at the same level as the `node-automated-deployer` script.
+
+### Upgrade
+
+If you are upgrading from an older version, please replace the `config.yaml` file with the new one (generated from [Explorer](https://explorer.rss3.io/)) or modify the configurations according to the [Deployment Guide](https://docs.rss3.io/guide/operator/deployment/guide#configuration-options).
+
+#### Upgrading from v1.0.x or older to v1.1.x
+
+```yaml
+component:
+    rss:
+        id: rsshub-core
+        network: rsshub
+        worker: core
+```
+
+`rss` component has breaking changes:
+
+- `id`, from `rss-rsshub` to `rsshub-core`
+- `network`, from `rss` to `rsshub`
+- `worker`, from `rsshub` to `core`
+
+Other components remain the same.
 
 ### Deploy
 
@@ -35,4 +57,3 @@ Your `config.yaml` must be placed in the `config` subdirectory, at the same leve
 ```bash
 docker-compose up -d
 ```
-

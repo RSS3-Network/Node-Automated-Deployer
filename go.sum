@@ -185,8 +185,8 @@ github.com/rogpeppe/go-internal v1.9.0 h1:73kH8U+JUqXU8lRuOHeVHaa/SZPifC7BkcraZV
 github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/fJaraNFVN+nFs=
 github.com/rs/cors v1.7.0 h1:+88SsELBHx5r+hZ8TCkggzSstaWNbDvThkVK8H6f9ik=
 github.com/rs/cors v1.7.0/go.mod h1:gFx+x8UowdsKA9AchylcLynDq+nNFfI8FkUZdN/jGCU=
-github.com/rss3-network/node v1.1.2 h1:cdvCNT8RazTQqyiICSYrJbr93Qq9DXTh9OPS9LsN0E8=
-github.com/rss3-network/node v1.1.2/go.mod h1:1oeQV14pAOoxDawXcBkDowQG5glwue16cqxpUJAT46k=
+github.com/rss3-network/node v1.1.3 h1:Np9Wwlevywvlr2xX4nOcuyeqpdQBGx7h2rfK/FMc8Pw=
+github.com/rss3-network/node v1.1.3/go.mod h1:1oeQV14pAOoxDawXcBkDowQG5glwue16cqxpUJAT46k=
 github.com/rss3-network/protocol-go v0.5.14 h1:gd6ciwXb5e4xx1dmAOAIKWbpami2QbARqE61zbwT6KE=
 github.com/rss3-network/protocol-go v0.5.14/go.mod h1:npcyduWt86uVbIi77xQaYk8eqltI9XNjk1FMGpjyIq0=
 github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf35Ld67mk=

@@ -3,7 +3,7 @@ module github.com/rss3-network/node-automated-deployer
 go 1.22.3
 
 require (
-	github.com/rss3-network/node v1.1.2
+	github.com/rss3-network/node v1.1.3
 	github.com/spf13/cobra v1.8.1
 	gopkg.in/yaml.v3 v3.0.1
 )

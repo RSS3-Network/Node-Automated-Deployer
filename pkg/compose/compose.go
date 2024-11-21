@@ -62,9 +62,9 @@ func NewCompose(options ...Option) *Compose {
 				ContainerName: fmt.Sprintf("%s_alloydb", dockerComposeContainerNamePrefix),
 				Expose:        []string{"5432"},
 				Image:         "google/alloydbomni:latest",
-				Volumes:       []string{fmt.Sprintf("%s:/alloydb/alloydb-data", alloydbVolume)},
+				Volumes:       []string{fmt.Sprintf("%s:/var/lib/postgresql/data", alloydbVolume)},
 				Environment: map[string]string{
-					"DATA_DIR":          "/alloydb/alloydb-data",
+					"DATA_DIR":          "/var/lib/postgresql/data",
 					"HOST_PORT":         "5432",
 					"POSTGRES_PASSWORD": "password",
 				},

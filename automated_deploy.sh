@@ -2,7 +2,7 @@
 
 # Deployer information
 DEPLOYER_NAME="Node-Automated-Deployer"
-DEPLOYER_VERSION="v0.5.4"
+DEPLOYER_VERSION="v0.5.5"
 DEPLOYER_RELEASE_URL="https://github.com/RSS3-Network/$DEPLOYER_NAME/releases"
 
 # The version of RSS3 Node to deploy

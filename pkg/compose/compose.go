@@ -172,8 +172,9 @@ func WithWorkers(workers []*config.Module) Option {
 					port = optionParameter.Port
 				}
 
+				portStr := strconv.FormatInt(port, 10)
 				service := services[name]
-				service.Expose = []string{strconv.FormatInt(port, 10)}
+				service.Ports = []string{fmt.Sprintf("%s:%s", portStr, portStr)}
 				services[name] = service
 			}
 		}

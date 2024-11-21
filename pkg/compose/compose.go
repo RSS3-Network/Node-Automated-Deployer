@@ -2,10 +2,13 @@ package compose
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/rss3-network/node/config"
+	"github.com/rss3-network/node/schema/worker/federated"
+	"github.com/rss3-network/protocol-go/schema/network"
 )
 
 type Compose struct {
@@ -144,6 +147,10 @@ func SetRestartPolicy() Option {
 	}
 }
 
+type OptionParameter struct {
+	Port int64 `json:"port"`
+}
+
 func WithWorkers(workers []*config.Module) Option {
 	return func(c *Compose) {
 		services := c.Services
@@ -154,6 +161,21 @@ func WithWorkers(workers []*config.Module) Option {
 				Command:       fmt.Sprintf("--module=worker --worker.id=%s", worker.ID),
 				ContainerName: name,
 				Image:         "rss3/node",
+			}
+
+			// set port for mastodon federated core
+			if worker.Network == network.Mastodon && worker.Worker == federated.Core {
+				// default port
+				var port int64 = 8181
+
+				if optionParameter := new(OptionParameter); worker.Parameters.Decode(optionParameter) == nil && optionParameter.Port > 0 {
+					port = optionParameter.Port
+				}
+
+				portStr := strconv.FormatInt(port, 10)
+				service := services[name]
+				service.Ports = []string{fmt.Sprintf("%s:%s", portStr, portStr)}
+				services[name] = service
 			}
 		}
 

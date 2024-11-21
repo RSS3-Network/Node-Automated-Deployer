@@ -52,7 +52,7 @@ Then, with a single command, you create and start all the services from your con
 
 		composeFile := compose.NewCompose(
 			compose.WithWorkers(cfg.Component.Decentralized),
-			// compose.WithWorkers(cfg.Component.Federated),
+			compose.WithWorkers(cfg.Component.Federated),
 			compose.SetDependsOnAlloyDB(),
 			compose.SetNodeVersion(version),
 			compose.SetNodeVolume(),

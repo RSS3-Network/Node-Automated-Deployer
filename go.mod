@@ -4,7 +4,7 @@ go 1.22.3
 
 require (
 	github.com/rss3-network/node v1.2.0
-	github.com/rss3-network/protocol-go v0.5.14
+	github.com/rss3-network/protocol-go v0.5.16
 	github.com/spf13/cobra v1.8.1
 	gopkg.in/yaml.v3 v3.0.1
 )

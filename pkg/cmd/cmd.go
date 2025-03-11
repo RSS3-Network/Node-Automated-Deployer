@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"fmt"
 	"io"
@@ -267,10 +268,22 @@ func checkAIEndpointHealth(endpoint string) bool {
 
 	// Perform multiple attempts to mitigate transient network issues
 	const maxRetries = 3
+
 	const retryInterval = time.Second
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
-		resp, err := client.Get(healthURL)
+		// Create a context for the HTTP request
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		// Use the context-aware Get method
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, healthURL, nil)
+		if err != nil {
+			time.Sleep(retryInterval)
+			continue
+		}
+
+		resp, err := client.Do(req)
 		if err == nil {
 			defer resp.Body.Close()
 			return resp.StatusCode == http.StatusOK

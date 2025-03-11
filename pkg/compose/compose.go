@@ -2,6 +2,7 @@ package compose
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -201,4 +202,89 @@ func SetDependsOnAlloyDB() Option {
 			}
 		}
 	}
+}
+
+// SetAIComponent configures the AI component for the node services.
+// If an external AI endpoint is provided and healthy, it's used directly.
+// If no endpoint is provided or it's unhealthy, creates an agentdata service using the existing AlloyDB.
+func SetAIComponent(cfg *config.File, isAIEndpointHealthy bool) Option {
+	return func(c *Compose) {
+		// Skip AI component setup if:
+		// 1. AI endpoint is already healthy, or
+		// 2. Configuration is missing or doesn't need AI component
+		if isAIEndpointHealthy {
+			return
+		}
+
+		// Check if we need the AI component
+		hasAIComponent := cfg != nil && cfg.Component != nil
+		if !hasAIComponent {
+			return
+		}
+
+		// Find and validate the AlloyDB service
+		alloydbServiceName := fmt.Sprintf("%s_alloydb", dockerComposeContainerNamePrefix)
+		if _, exists := c.Services[alloydbServiceName]; !exists {
+			log.Printf("Warning: AlloyDB service %s not found, cannot set up agentdata", alloydbServiceName)
+			return
+		}
+
+		// Create and configure the agentdata service
+		agentdataServiceName := fmt.Sprintf("%s_agentdata", dockerComposeContainerNamePrefix)
+		c.Services[agentdataServiceName] = Service{
+			Image:         "ghcr.io/rss3-network/agentdata:latest",
+			ContainerName: agentdataServiceName,
+			Restart:       "unless-stopped",
+			Ports:         []string{"8887:8887"},
+			Environment: map[string]string{
+				"DB_CONNECTION": fmt.Sprintf("postgresql://postgres:password@%s:5432/agent_data", alloydbServiceName),
+			},
+			DependsOn: map[string]DependsOn{
+				alloydbServiceName: {Condition: "service_healthy"},
+			},
+		}
+
+		// Configure the AI endpoint for core RSS3 services
+		configureAIEndpointForCoreServices(c, agentdataServiceName)
+	}
+}
+
+// configureAIEndpointForCoreServices sets the AI endpoint environment variable
+// for the core, monitor, and broadcaster services only
+func configureAIEndpointForCoreServices(c *Compose, agentdataServiceName string) {
+	// Target only these specific core services
+	coreServices := []string{
+		fmt.Sprintf("%s_core", dockerComposeContainerNamePrefix),
+		fmt.Sprintf("%s_monitor", dockerComposeContainerNamePrefix),
+		fmt.Sprintf("%s_broadcaster", dockerComposeContainerNamePrefix),
+	}
+
+	// Set the AI endpoint for each core service
+	agentdataEndpoint := fmt.Sprintf("http://%s:8887", agentdataServiceName)
+
+	for serviceName, service := range c.Services {
+		// Skip services that aren't in our target list
+		if !containsString(coreServices, service.ContainerName) {
+			continue
+		}
+
+		// Initialize environment map if needed
+		if service.Environment == nil {
+			service.Environment = make(map[string]string)
+		}
+
+		// Set the AI endpoint and update the service
+		service.Environment["NODE_COMPONENT_AI_ENDPOINT"] = agentdataEndpoint
+		c.Services[serviceName] = service
+	}
+}
+
+// containsString checks if a string slice contains a specific string
+func containsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
 }

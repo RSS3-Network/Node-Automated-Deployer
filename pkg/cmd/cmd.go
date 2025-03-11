@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/rss3-network/node-automated-deployer/pkg/compose"
 	"github.com/rss3-network/node/config"
@@ -50,6 +53,17 @@ Then, with a single command, you create and start all the services from your con
 			return err
 		}
 
+		// Check if the AI endpoint is healthy by reading directly from the config file
+		endpoint, err := readAIComponentEndpoint(file)
+		if err != nil {
+			return err
+		}
+
+		isAIEndpointHealthy := false
+		if endpoint != "" {
+			isAIEndpointHealthy = checkAIEndpointHealth(endpoint)
+		}
+
 		composeFile := compose.NewCompose(
 			compose.WithWorkers(cfg.Component.Decentralized),
 			compose.WithWorkers(cfg.Component.Federated),
@@ -57,6 +71,7 @@ Then, with a single command, you create and start all the services from your con
 			compose.SetNodeVersion(version),
 			compose.SetNodeVolume(),
 			compose.SetRestartPolicy(),
+			compose.SetAIComponent(cfg, isAIEndpointHealthy),
 		)
 
 		var b bytes.Buffer
@@ -90,26 +105,72 @@ func randomString(n int) string {
 	return string(b)
 }
 
-func patchFileSetDatabaseConnectionURI(file string, newConnectionURI string) error {
+// readConfigFile reads a configuration file and returns the parsed YAML content
+// It supports two different output formats:
+// 1. As a yaml.Node structure (for direct node manipulation)
+// 2. As a map[string]interface{} (for simpler key-value access)
+func readConfigFile(file string) (string, *yaml.Node, map[string]interface{}, error) {
+	// Locate the configuration file
 	discovered, err := discoverConfigFile(file)
 	if err != nil {
-		return fmt.Errorf("patch config file with new database connection uri, discover config file, %w", err)
+		return "", nil, nil, fmt.Errorf("read config file, discover config file, %w", err)
 	}
 
+	// Open the file
 	f, err := os.Open(discovered)
 	if err != nil {
-		return fmt.Errorf("patch config file with new database connection uri, open config file, %w", err)
+		return "", nil, nil, fmt.Errorf("read config file, open config file, %w", err)
+	}
+	defer f.Close()
+
+	// Read as yaml.Node for node-based manipulation
+	var rootNode yaml.Node
+	// Create a copy of the file content to parse it in two different ways
+	fileContent, err := io.ReadAll(f)
+	if err != nil {
+		return "", nil, nil, fmt.Errorf("read config file, read file content, %w", err)
 	}
 
-	// we do not unmashal DSL node config.File directly because it does not have yaml struct tags and it does not play well with yaml encoder
-	// as a workaround, we unmarshal the file into yaml.Node then manually patch the access token
-	var root yaml.Node
-	if err = yaml.NewDecoder(f).Decode(&root); err != nil {
-		return fmt.Errorf("patch config file with new database connection uri, decode config file, %w", err)
+	// Parse as yaml.Node
+	if err = yaml.Unmarshal(fileContent, &rootNode); err != nil {
+		return "", nil, nil, fmt.Errorf("read config file, decode as yaml node, %w", err)
 	}
 
-	if len(root.Content) > 0 {
-		databaseNode, err := findYamlNode("database", root.Content[0])
+	// Parse as map[string]interface{}
+	var configMap map[string]interface{}
+	if err = yaml.Unmarshal(fileContent, &configMap); err != nil {
+		return "", nil, nil, fmt.Errorf("read config file, decode as map, %w", err)
+	}
+
+	return discovered, &rootNode, configMap, nil
+}
+
+// writeConfigFile writes the YAML node back to the configuration file
+func writeConfigFile(filePath string, rootNode *yaml.Node) error {
+	// Open the file for writing
+	f, err := os.OpenFile(filePath, os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("write config file, open file, %w", err)
+	}
+	defer f.Close()
+
+	// Encode and write to file
+	err = yaml.NewEncoder(f).Encode(rootNode)
+	if err != nil {
+		return fmt.Errorf("write config file, encode yaml, %w", err)
+	}
+
+	return nil
+}
+
+func patchFileSetDatabaseConnectionURI(file string, newConnectionURI string) error {
+	discovered, rootNode, _, err := readConfigFile(file)
+	if err != nil {
+		return fmt.Errorf("patch config file with new database connection uri, %w", err)
+	}
+
+	if len(rootNode.Content) > 0 {
+		databaseNode, err := findYamlNode("database", rootNode.Content[0])
 		if err != nil {
 			return fmt.Errorf("patch config file with new database connection uri, find database node, %w", err)
 		}
@@ -131,46 +192,19 @@ func patchFileSetDatabaseConnectionURI(file string, newConnectionURI string) err
 		uriNode.Tag = "!!str"
 		uriNode.Value = newConnectionURI
 	}
-	// dump patched yaml node to file
-	if err = f.Close(); err != nil {
-		return fmt.Errorf("patch config file with generated access token, close config file, %w", err)
-	}
 
-	f, err = os.OpenFile(discovered, os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		return fmt.Errorf("patch config file with generated access token, open config file, %w", err)
-	}
-
-	err = yaml.NewEncoder(f).Encode(&root)
-	if err != nil {
-		return fmt.Errorf("patch config file with generated access token, encode config file, %w", err)
-	}
-
-	f.Close()
-
-	return nil
+	// Write the updated config back to file
+	return writeConfigFile(discovered, rootNode)
 }
 
 func patchConfigFileWithAccessToken(file string, accessToken string) error {
-	discovered, err := discoverConfigFile(file)
+	discovered, rootNode, _, err := readConfigFile(file)
 	if err != nil {
-		return fmt.Errorf("patch config file with generated access token, discover config file, %w", err)
+		return fmt.Errorf("patch config file with generated access token, %w", err)
 	}
 
-	f, err := os.Open(discovered)
-	if err != nil {
-		return fmt.Errorf("patch config file with generated access token, open config file, %w", err)
-	}
-
-	// we do not unmashal DSL node config.File directly because it does not have yaml struct tags and it does not play well with yaml encoder
-	// as a workaround, we unmarshal the file into yaml.Node then manually patch the access token
-	var root yaml.Node
-	if err = yaml.NewDecoder(f).Decode(&root); err != nil {
-		return fmt.Errorf("patch config file with generated access token, decode config file, %w", err)
-	}
-
-	if len(root.Content) > 0 {
-		discoveryNode, err := findYamlNode("discovery", root.Content[0])
+	if len(rootNode.Content) > 0 {
+		discoveryNode, err := findYamlNode("discovery", rootNode.Content[0])
 		if err != nil {
 			return fmt.Errorf("patch config file with generated access token, find discovery node, %w", err)
 		}
@@ -211,24 +245,84 @@ func patchConfigFileWithAccessToken(file string, accessToken string) error {
 		}
 	}
 
-	// dump patched yaml node to file
-	if err = f.Close(); err != nil {
-		return fmt.Errorf("patch config file with generated access token, close config file, %w", err)
+	// Write the updated config back to file
+	return writeConfigFile(discovered, rootNode)
+}
+
+// checkAIEndpointHealth verifies if the provided AI endpoint is responsive and operational.
+// It performs multiple attempts to account for potential network issues.
+func checkAIEndpointHealth(endpoint string) bool {
+	if endpoint == "" {
+		return false
 	}
 
-	f, err = os.OpenFile(discovered, os.O_WRONLY|os.O_TRUNC, 0644)
+	// Normalize endpoint URL
+	endpoint = normalizeEndpointURL(endpoint)
+	healthURL := endpoint + "api/v1/health"
+
+	// Configure HTTP client with reasonable timeout
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	// Perform multiple attempts to mitigate transient network issues
+	const maxRetries = 3
+	const retryInterval = time.Second
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		resp, err := client.Get(healthURL)
+		if err == nil {
+			defer resp.Body.Close()
+			return resp.StatusCode == http.StatusOK
+		}
+
+		// Wait before next retry
+		time.Sleep(retryInterval)
+	}
+
+	return false
+}
+
+// normalizeEndpointURL ensures the endpoint URL has proper protocol and trailing slash
+func normalizeEndpointURL(url string) string {
+	// Add protocol if missing
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		url = "https://" + url
+	}
+
+	// Add trailing slash if missing
+	if !strings.HasSuffix(url, "/") {
+		url += "/"
+	}
+
+	return url
+}
+
+// readAIComponentEndpoint extracts the AI component endpoint from the configuration file.
+// Returns an empty string if the configuration file doesn't contain an AI component endpoint.
+func readAIComponentEndpoint(configFile string) (string, error) {
+	_, _, configMap, err := readConfigFile(configFile)
 	if err != nil {
-		return fmt.Errorf("patch config file with generated access token, open config file, %w", err)
+		return "", fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	err = yaml.NewEncoder(f).Encode(&root)
-	if err != nil {
-		return fmt.Errorf("patch config file with generated access token, encode config file, %w", err)
+	// Extract the AI component endpoint using safe type assertions
+	component, ok := configMap["component"].(map[string]interface{})
+	if !ok {
+		return "", nil
 	}
 
-	f.Close()
+	ai, ok := component["ai"].(map[string]interface{})
+	if !ok {
+		return "", nil
+	}
 
-	return nil
+	endpoint, ok := ai["endpoint"].(string)
+	if !ok {
+		return "", nil
+	}
+
+	return endpoint, nil
 }
 
 func discoverConfigFile(file string) (string, error) {

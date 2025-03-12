@@ -53,7 +53,7 @@ func NewCompose(options ...Option) *Compose {
 		Services: map[string]Service{
 			fmt.Sprintf("%s_redis", dockerComposeContainerNamePrefix): {
 				ContainerName: fmt.Sprintf("%s_redis", dockerComposeContainerNamePrefix),
-				Expose:        []string{"6397"},
+				Expose:        []string{"6379"},
 				Image:         "redis:7-alpine",
 				Healthcheck: Healthcheck{
 					Test:     []string{"CMD", "redis-cli", "ping"},
@@ -238,6 +238,7 @@ func SetAIComponent(cfg *config.File, isAIEndpointHealthy bool) Option {
 			Ports:         []string{"8887:8887"},
 			Environment: map[string]string{
 				"DB_CONNECTION": fmt.Sprintf("postgresql://postgres:password@%s:5432/agent_data", alloydbServiceName),
+				// TODO should set more environment variables
 			},
 			DependsOn: map[string]DependsOn{
 				alloydbServiceName: {Condition: "service_healthy"},

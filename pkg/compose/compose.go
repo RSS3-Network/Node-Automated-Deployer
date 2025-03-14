@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rss3-network/node/config"
-	"github.com/rss3-network/node/schema/worker/federated"
+	"github.com/rss3-network/node/v2/config"
+	"github.com/rss3-network/node/v2/schema/worker/federated"
 	"github.com/rss3-network/protocol-go/schema/network"
 )
 
@@ -39,6 +39,21 @@ type Service struct {
 	Volumes       []string             `yaml:"volumes,omitempty"`
 	Healthcheck   Healthcheck          `yaml:"healthcheck,omitempty"`
 	DependsOn     map[string]DependsOn `yaml:"depends_on,omitempty"`
+}
+
+type AIComponentParameters struct {
+	OpenAIAPIKey  string            `json:"openai_api_key" mapstructure:"openai_api_key"`
+	OllamaHost    string            `json:"ollama_host" mapstructure:"ollama_host"`
+	KaitoAPIToken string            `json:"kaito_api_token" mapstructure:"kaito_api_token"`
+	Twitter       TwitterParameters `json:"twitter" mapstructure:"twitter"`
+}
+
+type TwitterParameters struct {
+	BearerToken       string `json:"bearer_token" mapstructure:"bearer_token"`
+	APIKey            string `json:"api_key" mapstructure:"api_key"`
+	APISecret         string `json:"api_secret" mapstructure:"api_secret"`
+	AccessToken       string `json:"access_token" mapstructure:"access_token"`
+	AccessTokenSecret string `json:"access_token_secret" mapstructure:"access_token_secret"`
 }
 
 type Option func(*Compose)
@@ -139,6 +154,7 @@ func SetNodeVolume() Option {
 func SetRestartPolicy() Option {
 	return func(c *Compose) {
 		services := c.Services
+
 		for k, v := range services {
 			v.Restart = "unless-stopped"
 			c.Services[k] = v
@@ -165,7 +181,7 @@ func WithWorkers(workers []*config.Module) Option {
 			}
 
 			// set port for mastodon federated core
-			if worker.Network == network.Mastodon && worker.Worker == federated.Core {
+			if worker.Network == network.Mastodon && worker.Worker == federated.Mastodon {
 				// default port
 				var port int64 = 8181
 
@@ -188,6 +204,7 @@ func WithWorkers(workers []*config.Module) Option {
 func SetDependsOnAlloyDB() Option {
 	return func(c *Compose) {
 		services := c.Services
+
 		for k, v := range services {
 			if strings.Contains(v.Image, "rss3/node") {
 				v.DependsOn = map[string]DependsOn{
@@ -198,6 +215,7 @@ func SetDependsOnAlloyDB() Option {
 						Condition: "service_healthy",
 					},
 				}
+
 				c.Services[k] = v
 			}
 		}
@@ -209,16 +227,8 @@ func SetDependsOnAlloyDB() Option {
 // If no endpoint is provided or it's unhealthy, creates an agentdata service using the existing AlloyDB.
 func SetAIComponent(cfg *config.File, isAIEndpointHealthy bool) Option {
 	return func(c *Compose) {
-		// Skip AI component setup if:
-		// 1. AI endpoint is already healthy, or
-		// 2. Configuration is missing or doesn't need AI component
-		if isAIEndpointHealthy {
-			return
-		}
-
-		// Check if we need the AI component
-		hasAIComponent := cfg != nil && cfg.Component != nil
-		if !hasAIComponent {
+		// Skip if AI endpoint is healthy or component not configured
+		if isAIEndpointHealthy || cfg == nil || cfg.Component == nil || cfg.Component.AI == nil {
 			return
 		}
 
@@ -229,17 +239,31 @@ func SetAIComponent(cfg *config.File, isAIEndpointHealthy bool) Option {
 			return
 		}
 
+		// Create base environment with database connection
+		env := map[string]string{
+			"DB_CONNECTION": fmt.Sprintf("postgresql://postgres:password@%s:5432/agent_data", alloydbServiceName),
+		}
+
+		// Extract and map AI parameters to environment variables if available
+		if cfg.Component.AI.Parameters != nil {
+			var params AIComponentParameters
+
+			if err := cfg.Component.AI.Parameters.Decode(&params); err != nil {
+				log.Printf("Warning: Failed to decode AI parameters: %v", err)
+			} else {
+				// Add AI-specific environment variables from parameters
+				mapAIParamsToEnv(&params, env)
+			}
+		}
+
 		// Create and configure the agentdata service
 		agentdataServiceName := fmt.Sprintf("%s_agentdata", dockerComposeContainerNamePrefix)
 		c.Services[agentdataServiceName] = Service{
-			Image:         "ghcr.io/rss3-network/agentdata:latest",
+			Image:         "ghcr.io/rss3-network/agentdata",
 			ContainerName: agentdataServiceName,
 			Restart:       "unless-stopped",
 			Ports:         []string{"8887:8887"},
-			Environment: map[string]string{
-				"DB_CONNECTION": fmt.Sprintf("postgresql://postgres:password@%s:5432/agent_data", alloydbServiceName),
-				// TODO should set more environment variables
-			},
+			Environment:   env,
 			DependsOn: map[string]DependsOn{
 				alloydbServiceName: {Condition: "service_healthy"},
 			},
@@ -265,7 +289,7 @@ func configureAIEndpointForCoreServices(c *Compose, agentdataServiceName string)
 
 	for serviceName, service := range c.Services {
 		// Skip services that aren't in our target list
-		if !containsString(coreServices, service.ContainerName) {
+		if !containsString(coreServices, serviceName) {
 			continue
 		}
 
@@ -277,6 +301,38 @@ func configureAIEndpointForCoreServices(c *Compose, agentdataServiceName string)
 		// Set the AI endpoint and update the service
 		service.Environment["NODE_COMPONENT_AI_ENDPOINT"] = agentdataEndpoint
 		c.Services[serviceName] = service
+	}
+}
+
+// mapAIParamsToEnv adds non-empty AI parameters to the environment map
+func mapAIParamsToEnv(params *AIComponentParameters, env map[string]string) {
+	// Map AI service credentials
+	if params.OpenAIAPIKey != "" {
+		env["OPENAI_API_KEY"] = params.OpenAIAPIKey
+	}
+	if params.OllamaHost != "" {
+		env["OLLAMA_HOST"] = params.OllamaHost
+	}
+	if params.KaitoAPIToken != "" {
+		env["KAITO_API_TOKEN"] = params.KaitoAPIToken
+	}
+
+	// Map Twitter credentials
+	twitter := params.Twitter
+	if twitter.BearerToken != "" {
+		env["TWITTER_BEARER_TOKEN"] = twitter.BearerToken
+	}
+	if twitter.APIKey != "" {
+		env["TWITTER_API_KEY"] = twitter.APIKey
+	}
+	if twitter.APISecret != "" {
+		env["TWITTER_API_SECRET"] = twitter.APISecret
+	}
+	if twitter.AccessToken != "" {
+		env["TWITTER_ACCESS_TOKEN"] = twitter.AccessToken
+	}
+	if twitter.AccessTokenSecret != "" {
+		env["TWITTER_ACCESS_TOKEN_SECRET"] = twitter.AccessTokenSecret
 	}
 }
 

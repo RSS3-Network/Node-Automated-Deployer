@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/rss3-network/node-automated-deployer/pkg/compose"
-	"github.com/rss3-network/node/config"
+	"github.com/rss3-network/node/v2/config"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+	yaml "gopkg.in/yaml.v3"
 )
 
 var (

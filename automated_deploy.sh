@@ -6,7 +6,7 @@ DEPLOYER_VERSION="v0.5.5"
 DEPLOYER_RELEASE_URL="https://github.com/RSS3-Network/$DEPLOYER_NAME/releases"
 
 # The version of RSS3 Node to deploy
-NODE_VERSION="v1.2.0"
+NODE_VERSION="v2.0.0-rc"
 
 # Detect the operating system
 OS=$(uname -s)

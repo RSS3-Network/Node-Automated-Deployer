@@ -2,12 +2,13 @@ package compose
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/rss3-network/node/config"
-	"github.com/rss3-network/node/schema/worker/federated"
+	"github.com/rss3-network/node/v2/config"
+	"github.com/rss3-network/node/v2/schema/worker/federated"
 	"github.com/rss3-network/protocol-go/schema/network"
 )
 
@@ -40,6 +41,21 @@ type Service struct {
 	DependsOn     map[string]DependsOn `yaml:"depends_on,omitempty"`
 }
 
+type AIComponentParameters struct {
+	OpenAIAPIKey  string            `json:"openai_api_key" mapstructure:"openai_api_key"`
+	OllamaHost    string            `json:"ollama_host" mapstructure:"ollama_host"`
+	KaitoAPIToken string            `json:"kaito_api_token" mapstructure:"kaito_api_token"`
+	Twitter       TwitterParameters `json:"twitter" mapstructure:"twitter"`
+}
+
+type TwitterParameters struct {
+	BearerToken       string `json:"bearer_token" mapstructure:"bearer_token"`
+	APIKey            string `json:"api_key" mapstructure:"api_key"`
+	APISecret         string `json:"api_secret" mapstructure:"api_secret"`
+	AccessToken       string `json:"access_token" mapstructure:"access_token"`
+	AccessTokenSecret string `json:"access_token_secret" mapstructure:"access_token_secret"`
+}
+
 type Option func(*Compose)
 
 // use a prefix to avoid conflict with other containers
@@ -52,7 +68,7 @@ func NewCompose(options ...Option) *Compose {
 		Services: map[string]Service{
 			fmt.Sprintf("%s_redis", dockerComposeContainerNamePrefix): {
 				ContainerName: fmt.Sprintf("%s_redis", dockerComposeContainerNamePrefix),
-				Expose:        []string{"6397"},
+				Expose:        []string{"6379"},
 				Image:         "redis:7-alpine",
 				Healthcheck: Healthcheck{
 					Test:     []string{"CMD", "redis-cli", "ping"},
@@ -138,6 +154,7 @@ func SetNodeVolume() Option {
 func SetRestartPolicy() Option {
 	return func(c *Compose) {
 		services := c.Services
+
 		for k, v := range services {
 			v.Restart = "unless-stopped"
 			c.Services[k] = v
@@ -164,7 +181,7 @@ func WithWorkers(workers []*config.Module) Option {
 			}
 
 			// set port for mastodon federated core
-			if worker.Network == network.Mastodon && worker.Worker == federated.Core {
+			if worker.Network == network.Mastodon && worker.Worker == federated.Mastodon {
 				// default port
 				var port int64 = 8181
 
@@ -187,6 +204,7 @@ func WithWorkers(workers []*config.Module) Option {
 func SetDependsOnAlloyDB() Option {
 	return func(c *Compose) {
 		services := c.Services
+
 		for k, v := range services {
 			if strings.Contains(v.Image, "rss3/node") {
 				v.DependsOn = map[string]DependsOn{
@@ -197,8 +215,140 @@ func SetDependsOnAlloyDB() Option {
 						Condition: "service_healthy",
 					},
 				}
+
 				c.Services[k] = v
 			}
 		}
 	}
+}
+
+// SetAIComponent configures the AI component for the node services.
+// If an external AI endpoint is provided and healthy, it's used directly.
+// If no endpoint is provided or it's unhealthy, creates an agentdata service using the existing AlloyDB.
+func SetAIComponent(cfg *config.File, isAIEndpointHealthy bool) Option {
+	return func(c *Compose) {
+		// Skip if AI endpoint is healthy or component not configured
+		if isAIEndpointHealthy || cfg == nil || cfg.Component == nil || cfg.Component.AI == nil {
+			return
+		}
+
+		// Find and validate the AlloyDB service
+		alloydbServiceName := fmt.Sprintf("%s_alloydb", dockerComposeContainerNamePrefix)
+		if _, exists := c.Services[alloydbServiceName]; !exists {
+			log.Printf("Warning: AlloyDB service %s not found, cannot set up agentdata", alloydbServiceName)
+			return
+		}
+
+		// Create base environment with database connection
+		env := map[string]string{
+			"DB_CONNECTION": fmt.Sprintf("postgresql://postgres:password@%s:5432/agent_data", alloydbServiceName),
+		}
+
+		// Extract and map AI parameters to environment variables if available
+		if cfg.Component.AI.Parameters != nil {
+			var params AIComponentParameters
+
+			if err := cfg.Component.AI.Parameters.Decode(&params); err != nil {
+				log.Printf("Warning: Failed to decode AI parameters: %v", err)
+			} else {
+				// Add AI-specific environment variables from parameters
+				mapAIParamsToEnv(&params, env)
+			}
+		}
+
+		// Create and configure the agentdata service
+		agentdataServiceName := fmt.Sprintf("%s_agentdata", dockerComposeContainerNamePrefix)
+		c.Services[agentdataServiceName] = Service{
+			Image:         "ghcr.io/rss3-network/agentdata",
+			ContainerName: agentdataServiceName,
+			Restart:       "unless-stopped",
+			Ports:         []string{"8887:8887"},
+			Environment:   env,
+			DependsOn: map[string]DependsOn{
+				alloydbServiceName: {Condition: "service_healthy"},
+			},
+		}
+
+		// Configure the AI endpoint for core RSS3 services
+		configureAIEndpointForCoreServices(c, agentdataServiceName)
+	}
+}
+
+// configureAIEndpointForCoreServices sets the AI endpoint environment variable
+// for the core, monitor, and broadcaster services only
+func configureAIEndpointForCoreServices(c *Compose, agentdataServiceName string) {
+	// Target only these specific core services
+	coreServices := []string{
+		fmt.Sprintf("%s_core", dockerComposeContainerNamePrefix),
+		fmt.Sprintf("%s_monitor", dockerComposeContainerNamePrefix),
+		fmt.Sprintf("%s_broadcaster", dockerComposeContainerNamePrefix),
+	}
+
+	// Set the AI endpoint for each core service
+	agentdataEndpoint := fmt.Sprintf("http://%s:8887", agentdataServiceName)
+
+	for serviceName, service := range c.Services {
+		// Skip services that aren't in our target list
+		if !containsString(coreServices, serviceName) {
+			continue
+		}
+
+		// Initialize environment map if needed
+		if service.Environment == nil {
+			service.Environment = make(map[string]string)
+		}
+
+		// Set the AI endpoint and update the service
+		service.Environment["NODE_COMPONENT_AI_ENDPOINT"] = agentdataEndpoint
+		c.Services[serviceName] = service
+	}
+}
+
+// mapAIParamsToEnv adds non-empty AI parameters to the environment map
+func mapAIParamsToEnv(params *AIComponentParameters, env map[string]string) {
+	// Map AI service credentials
+	if params.OpenAIAPIKey != "" {
+		env["OPENAI_API_KEY"] = params.OpenAIAPIKey
+	}
+
+	if params.OllamaHost != "" {
+		env["OLLAMA_HOST"] = params.OllamaHost
+	}
+
+	if params.KaitoAPIToken != "" {
+		env["KAITO_API_TOKEN"] = params.KaitoAPIToken
+	}
+
+	// Map Twitter credentials
+	twitter := params.Twitter
+	if twitter.BearerToken != "" {
+		env["TWITTER_BEARER_TOKEN"] = twitter.BearerToken
+	}
+
+	if twitter.APIKey != "" {
+		env["TWITTER_API_KEY"] = twitter.APIKey
+	}
+
+	if twitter.APISecret != "" {
+		env["TWITTER_API_SECRET"] = twitter.APISecret
+	}
+
+	if twitter.AccessToken != "" {
+		env["TWITTER_ACCESS_TOKEN"] = twitter.AccessToken
+	}
+
+	if twitter.AccessTokenSecret != "" {
+		env["TWITTER_ACCESS_TOKEN_SECRET"] = twitter.AccessTokenSecret
+	}
+}
+
+// containsString checks if a string slice contains a specific string
+func containsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+
+	return false
 }

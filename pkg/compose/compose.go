@@ -310,9 +310,11 @@ func mapAIParamsToEnv(params *AIComponentParameters, env map[string]string) {
 	if params.OpenAIAPIKey != "" {
 		env["OPENAI_API_KEY"] = params.OpenAIAPIKey
 	}
+
 	if params.OllamaHost != "" {
 		env["OLLAMA_HOST"] = params.OllamaHost
 	}
+
 	if params.KaitoAPIToken != "" {
 		env["KAITO_API_TOKEN"] = params.KaitoAPIToken
 	}
@@ -322,15 +324,19 @@ func mapAIParamsToEnv(params *AIComponentParameters, env map[string]string) {
 	if twitter.BearerToken != "" {
 		env["TWITTER_BEARER_TOKEN"] = twitter.BearerToken
 	}
+
 	if twitter.APIKey != "" {
 		env["TWITTER_API_KEY"] = twitter.APIKey
 	}
+
 	if twitter.APISecret != "" {
 		env["TWITTER_API_SECRET"] = twitter.APISecret
 	}
+
 	if twitter.AccessToken != "" {
 		env["TWITTER_ACCESS_TOKEN"] = twitter.AccessToken
 	}
+
 	if twitter.AccessTokenSecret != "" {
 		env["TWITTER_ACCESS_TOKEN_SECRET"] = twitter.AccessTokenSecret
 	}

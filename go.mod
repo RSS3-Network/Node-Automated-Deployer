@@ -2,8 +2,6 @@ module github.com/rss3-network/node-automated-deployer
 
 go 1.22.7
 
-toolchain go1.23.7
-
 require (
 	github.com/rss3-network/node/v2 v2.0.0-rc
 	github.com/rss3-network/protocol-go v0.5.16

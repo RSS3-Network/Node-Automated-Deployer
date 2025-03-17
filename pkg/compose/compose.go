@@ -98,17 +98,17 @@ func NewCompose(options ...Option) *Compose {
 				Command:       "--module=core",
 				ContainerName: fmt.Sprintf("%s_core", dockerComposeContainerNamePrefix),
 				Ports:         []string{"8080:80"},
-				Image:         "rss3/node",
+				Image:         "ghcr.io/rss3-network/node",
 			},
 			fmt.Sprintf("%s_monitor", dockerComposeContainerNamePrefix): {
 				Command:       "--module=monitor",
 				ContainerName: fmt.Sprintf("%s_monitor", dockerComposeContainerNamePrefix),
-				Image:         "rss3/node",
+				Image:         "ghcr.io/rss3-network/node",
 			},
 			fmt.Sprintf("%s_broadcaster", dockerComposeContainerNamePrefix): {
 				Command:       "--module=broadcaster",
 				ContainerName: fmt.Sprintf("%s_broadcaster", dockerComposeContainerNamePrefix),
-				Image:         "rss3/node",
+				Image:         "ghcr.io/rss3-network/node",
 			},
 		},
 		Volumes: map[string]*string{
@@ -127,8 +127,8 @@ func SetNodeVersion(version string) Option {
 	return func(c *Compose) {
 		services := c.Services
 		for k, v := range services {
-			if strings.Contains(v.Image, "rss3/node") {
-				v.Image = fmt.Sprintf("rss3/node:%s", version)
+			if strings.Contains(v.Image, "ghcr.io/rss3-network/node") {
+				v.Image = fmt.Sprintf("ghcr.io/rss3-network/node:%s", version)
 				c.Services[k] = v
 			}
 		}
@@ -141,7 +141,7 @@ func SetNodeVolume() Option {
 	return func(c *Compose) {
 		services := c.Services
 		for k, v := range services {
-			if strings.Contains(v.Image, "rss3/node") {
+			if strings.Contains(v.Image, "ghcr.io/rss3-network/node") {
 				v.Volumes = append(v.Volumes, "${PWD}/config:/etc/rss3/node")
 				c.Services[k] = v
 			}
@@ -177,7 +177,7 @@ func WithWorkers(workers []*config.Module) Option {
 			services[name] = Service{
 				Command:       fmt.Sprintf("--module=worker --worker.id=%s", worker.ID),
 				ContainerName: name,
-				Image:         "rss3/node",
+				Image:         "ghcr.io/rss3-network/node",
 			}
 
 			// set port for mastodon federated core
@@ -206,7 +206,7 @@ func SetDependsOnAlloyDB() Option {
 		services := c.Services
 
 		for k, v := range services {
-			if strings.Contains(v.Image, "rss3/node") {
+			if strings.Contains(v.Image, "ghcr.io/rss3-network/node") {
 				v.DependsOn = map[string]DependsOn{
 					fmt.Sprintf("%s_alloydb", dockerComposeContainerNamePrefix): {
 						Condition: "service_healthy",
